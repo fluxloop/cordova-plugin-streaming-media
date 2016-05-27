@@ -20,6 +20,7 @@
 	UIImageView *imageView;
     BOOL initFullscreen;
     double initialPlaybackTime;
+    BOOL playbackDurationSet;
 }
 
 NSString * const TYPE_VIDEO = @"VIDEO";
@@ -90,6 +91,7 @@ NSString * const DEFAULT_IMAGE_SCALE = @"center";
 }
 
 -(void)playVideo:(CDVInvokedUrlCommand *) command {
+    playbackDurationSet = NO;
 	[self play:command type:[NSString stringWithString:TYPE_VIDEO]];
 }
 
@@ -181,6 +183,12 @@ NSString * const DEFAULT_IMAGE_SCALE = @"center";
 	NSURL *url = [NSURL URLWithString:uri];
 
 	moviePlayer =  [[MPMoviePlayerController alloc] initWithContentURL:url];
+    
+    // Listen for playback finishing
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(moviePlayBackStateDidChange:)
+                                                 name:MPMoviePlayerPlaybackStateDidChangeNotification
+                                               object:moviePlayer];
 
 	// Listen for playback finishing
 	[[NSNotificationCenter defaultCenter] addObserver:self
@@ -199,7 +207,9 @@ NSString * const DEFAULT_IMAGE_SCALE = @"center";
 											   object:nil];
 
 	moviePlayer.controlStyle = MPMovieControlStyleDefault;
-    moviePlayer.initialPlaybackTime = initialPlaybackTime;
+    
+    [moviePlayer setInitialPlaybackTime:initialPlaybackTime];
+    //moviePlayer.initialPlaybackTime = initialPlaybackTime;
 
 	moviePlayer.shouldAutoplay = YES;
 	if (imageView != nil) {
@@ -214,6 +224,18 @@ NSString * const DEFAULT_IMAGE_SCALE = @"center";
         [moviePlayer setFullscreen:YES animated:NO];
     } else {
         [moviePlayer setFullscreen:NO animated:NO];
+    }
+}
+
+
+// Set initial playbacktime after player has started
+- (void) moviePlayBackStateDidChange:(NSNotification*)notification {
+    if (moviePlayer.playbackState==MPMoviePlaybackStatePlaying) {
+        // Prevent reseting playbacktime when user seeks video
+        if(!playbackDurationSet){
+            [moviePlayer setCurrentPlaybackTime:initialPlaybackTime];
+            playbackDurationSet = YES;
+        }
     }
 }
 
@@ -245,10 +267,11 @@ NSString * const DEFAULT_IMAGE_SCALE = @"center";
 }
 
 -(void)doneButtonClick:(NSNotification*)notification{
-	[self cleanup];
     
 	CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDouble:moviePlayer.currentPlaybackTime];
 	[self.commandDelegate sendPluginResult:pluginResult callbackId:callbackId];
+    
+    [self cleanup];
 }
 
 - (void)cleanup {
