@@ -31,6 +31,7 @@ public class SimpleVideoStream extends Activity implements
 	private ProgressBar mProgressBar = null;
 	private String mVideoUrl;
 	private Boolean mShouldAutoClose = true;
+	private int initialPlaybackTime = 0;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -42,6 +43,8 @@ public class SimpleVideoStream extends Activity implements
 		mVideoUrl = b.getString("mediaUrl");
 		mShouldAutoClose = b.getBoolean("shouldAutoClose");
 		mShouldAutoClose = mShouldAutoClose == null ? true : mShouldAutoClose;
+
+		initialPlaybackTime = b.getInt("initialPlaybackTime", 0);
 
 		RelativeLayout relLayout = new RelativeLayout(this);
 		relLayout.setBackgroundColor(Color.BLACK);
@@ -77,7 +80,10 @@ public class SimpleVideoStream extends Activity implements
 			mVideoView.setOnPreparedListener(this);
 			mVideoView.setOnErrorListener(this);
 			mVideoView.setVideoURI(videoUri);
+
+
 			mMediaController = new MediaController(this);
+
 			mMediaController.setAnchorView(mVideoView);
 			mMediaController.setMediaPlayer(mVideoView);
 			mVideoView.setMediaController(mMediaController);
@@ -115,8 +121,10 @@ public class SimpleVideoStream extends Activity implements
 		mMediaPlayer = mp;
 		mMediaPlayer.setOnBufferingUpdateListener(this);
 		mVideoView.requestFocus();
+		mVideoView.seekTo(initialPlaybackTime * 1000);
 		mVideoView.start();
 		mVideoView.postDelayed(checkIfPlaying, 0);
+
 	}
 
 	private void pause() {
@@ -138,6 +146,14 @@ public class SimpleVideoStream extends Activity implements
 	private void wrapItUp(int resultCode, String message) {
 		Intent intent = new Intent();
 		intent.putExtra("message", message);
+
+		try {
+			intent.putExtra("currentPlaybackTime", Math.round(mVideoView.getCurrentPosition() / 1000));
+		}
+		catch (Exception ex)
+		{
+			Log.e("ERROR", "Error getting currentPlaybackTime", ex);
+		}
 		setResult(resultCode, intent);
 		finish();
 	}

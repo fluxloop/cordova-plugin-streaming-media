@@ -22,6 +22,9 @@ public class StreamingMedia extends CordovaPlugin {
 
 	private static final int ACTIVITY_CODE_PLAY_MEDIA = 7;
 
+	private boolean initFullscreen;
+	private double initialPlaybackTime;
+
 	private CallbackContext callbackContext;
 
 	private static final String TAG = "StreamingMediaPlugin";
@@ -76,11 +79,18 @@ public class StreamingMedia extends CordovaPlugin {
 								extras.putBoolean("shouldAutoClose", true);
 								Log.v(TAG, "Added option: " + optKey + " -> " + String.valueOf(options.get(optKey)));
 							}
+							else if(optKey.equalsIgnoreCase("initialPlaybackTime")) {
+								extras.putInt("initialPlaybackTime", Integer.parseInt(options.get(optKey).toString()));
+							}
+
 
 						} catch (JSONException e) {
 							Log.e(TAG, "JSONException while trying to read options. Skipping option.");
 						}
 					}
+
+
+
 					streamIntent.putExtras(extras);
 				}
 
@@ -95,7 +105,17 @@ public class StreamingMedia extends CordovaPlugin {
 		super.onActivityResult(requestCode, resultCode, intent);
 		if (ACTIVITY_CODE_PLAY_MEDIA == requestCode) {
 			if (Activity.RESULT_OK == resultCode) {
-				this.callbackContext.success();
+
+				if(intent.hasExtra("currentPlaybackTime"))
+				{
+					int currentPlaybackTime = intent.getIntExtra("currentPlaybackTime", 0);
+
+					this.callbackContext.success(currentPlaybackTime);
+				}
+				else {
+					this.callbackContext.success();
+				}
+
 			} else if (Activity.RESULT_CANCELED == resultCode) {
 				String errMsg = "Error";
 				if (intent != null && intent.hasExtra("message")) {
